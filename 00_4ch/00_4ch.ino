@@ -97,12 +97,55 @@ class FadeLed {
     }
 };
 
+class VaryLed {
+    private:
+        uint8_t active_leds[2] = {0, 1};
+        uint8_t current_active_led = 0;
+        Timer timer = Timer(millis(), 1500);
+
+        uint8_t get_new_led_id(){
+            uint8_t new_id;
+            do {
+                new_id = random(0, 4);
+            } while (active_leds[0] == new_id || active_leds[1] == new_id);
+            return new_id;
+        }
+
+        void change(){
+            uint8_t current_led_id = active_leds[current_active_led];
+            leds[current_led_id] = LOW;
+            uint8_t new_led_id = get_new_led_id();
+            leds[new_led_id] = HIGH;
+            active_leds[current_active_led] = new_led_id;
+            if (current_active_led == 0) {
+                current_active_led = 1;
+            } else {
+                current_active_led =0;
+            }
+            is_changed = true;
+        }
+    public:
+        bool is_changed = true;
+        uint8_t leds[4] = {HIGH, HIGH, LOW, LOW};
+
+        VaryLed(){};
+
+        void tick(){
+            if (!timer.check_and_reset(millis())){
+                return;
+            }
+            change();
+        }
+};
+
 FadeLed red_fade;
 FadeLed green_fade;
 FadeLed orange_fade;
 FadeLed blue_fade;
+VaryLed varyLed;
 
 void setup(){
+  randomSeed(analogRead(0));
   pinMode(6, OUTPUT);
   pinMode(9, OUTPUT);
   pinMode(10, OUTPUT);
@@ -115,12 +158,13 @@ void setup(){
 }
 
 void loop(){
+  varyLed.tick();
   uint32_t now = millis();
   uint8_t red_fade_value = red_fade.get_value(now);
   uint8_t green_fade_value = green_fade.get_value(now);
   uint8_t orange_fade_value = orange_fade.get_value(now);
   uint8_t blue_fade_value = blue_fade.get_value(now);
-  switch (map(analogRead(A0), 0, 1024, 0, 6))
+  switch (map(analogRead(A0), 0, 1024, 0, 7))
   {
   case 0:
     analogWrite(6, red_fade_value);
@@ -129,30 +173,39 @@ void loop(){
     analogWrite(11, blue_fade_value);
     break;
   case 1:
+    if (varyLed.is_changed) {
+        digitalWrite(6, varyLed.leds[0]);
+        digitalWrite(9, varyLed.leds[1]);
+        digitalWrite(10, varyLed.leds[2]);
+        digitalWrite(11, varyLed.leds[3]);
+        varyLed.is_changed = false;
+    }
+    break;
+  case 2:
     digitalWrite(6, HIGH);
     digitalWrite(9, HIGH);
     digitalWrite(10, HIGH);
     digitalWrite(11, HIGH);
     break;
-  case 2:
+  case 3:
     digitalWrite(6, HIGH);
     digitalWrite(9, LOW);
     digitalWrite(10, LOW);
     digitalWrite(11, LOW);
     break;
-  case 3:
+  case 4:
     digitalWrite(6, LOW);
     digitalWrite(9, HIGH);
     digitalWrite(10, LOW);
     digitalWrite(11, LOW);
     break;
-  case 4:
+  case 5:
     digitalWrite(6, LOW);
     digitalWrite(9, LOW);
     digitalWrite(10, HIGH);
     digitalWrite(11, LOW);
     break;
-  case 5:
+  case 6:
     digitalWrite(6, LOW);
     digitalWrite(9, LOW);
     digitalWrite(10, LOW);
